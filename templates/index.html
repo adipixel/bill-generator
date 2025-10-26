@@ -148,13 +148,13 @@
     <div class="container">
       <h1>
         Consultancy Bill Generator
-        <a href="/companies" style="margin-left: 12px"
-          ><button type="button" class="secondary">Manage Companies</button></a
-        >
         <a href="/consultancies" style="margin-left: 8px"
           ><button type="button" class="secondary">
             Manage Consultancies
           </button></a
+        >
+        <a href="/companies" style="margin-left: 12px"
+          ><button type="button" class="secondary">Manage Companies</button></a
         >
       </h1>
 
@@ -217,11 +217,13 @@
 
         <div class="form-group">
           <label>Bank Details:</label>
-          <textarea name="bank_details" rows="4" required>
-Bank: Your Bank Name
-Account Number: 123456789
-IFSC: ABCD0123456</textarea
-          >
+          <textarea
+            id="bank-details-textarea"
+            name="bank_details"
+            rows="4"
+            required
+            placeholder="Paste bank details or select a Company/Consultancy to autofill"
+          ></textarea>
         </div>
 
         <div class="form-group">
@@ -289,14 +291,14 @@ IFSC: ABCD0123456</textarea
             <th>Client</th>
             <th>Date</th>
             <th style="text-align: right">Total (₹)</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for bill in bills %} {% if bill.get('bill_number') %}
           <tr
             data-href="{{ url_for('show_bill', bill_number=bill['bill_number']) }}"
-            style="cursor: pointer"
-            onclick="window.location=this.dataset.href"
+            class="clickable"
             tabindex="0"
           >
             {% else %}
@@ -310,6 +312,17 @@ IFSC: ABCD0123456</textarea
             <td>{{ bill['date'] }}</td>
             <td style="text-align: right">
               {{ "%.2f"|format(bill['total']) }}
+            </td>
+            <td style="text-align: center">
+              {% if bill.get('bill_number') %}
+              <form
+                method="POST"
+                action="{{ url_for('delete_bill', bill_number=bill['bill_number']) }}"
+                onsubmit="return confirmDelete(event,this)"
+              >
+                <button type="submit" class="small secondary">Delete</button>
+              </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -391,7 +404,25 @@ IFSC: ABCD0123456</textarea
               if (e.key === "Enter" && r.dataset.href)
                 window.location = r.dataset.href;
             });
+            // prevent row click when click originates from a button/form
+            r.addEventListener("click", (e) => {
+              if (
+                e.target &&
+                (e.target.tagName === "BUTTON" || e.target.closest("form"))
+              ) {
+                // let the form/button handle it
+                return;
+              }
+              if (r.dataset.href) window.location = r.dataset.href;
+            });
           });
+        }
+
+        function confirmDelete(e, form) {
+          // prevent the row click handler from navigating; we already handled that
+          e.stopPropagation();
+          const ok = confirm("Delete this bill? This action cannot be undone.");
+          return ok;
         }
 
         // Filter logic
@@ -484,20 +515,58 @@ IFSC: ABCD0123456</textarea
             const v = consultancySelect.value;
             consultancyInput.style.display = v === "custom" ? "block" : "none";
             if (v !== "custom") consultancyInput.value = "";
-            // Prefill bank details when a consultancy with bank info is selected
+            // Always update bank details to match selected consultancy (unless 'custom' or empty)
             const opt = consultancySelect.selectedOptions[0];
             const consultBank =
               opt && opt.dataset && opt.dataset.bank
                 ? opt.dataset.bank.replace(/\\n/g, "\n")
                 : "";
-            if (
-              consultBank &&
-              (!bankDetails.value || bankDetails.value.trim().length === 0)
-            ) {
-              bankDetails.value = consultBank;
+            if (v && v !== "custom") {
+              // If consultancy selected, override bank details with consultancy's bank info (if any)
+              if (consultBank) {
+                bankDetails.value = consultBank;
+              }
+            } else if (v === "") {
+              // cleared selection — clear bank details only if it was previously autofilled (leave user edits alone is not tracked here)
+              // For simplicity, clear when selection is empty
+              bankDetails.value = "";
             }
           });
         }
+
+        // Initialize bank details on page load from selected company or consultancy
+        (function initBankDetails() {
+          try {
+            const bankEl = bankDetails; // already selected above
+            // Prefer company selection first, then consultancy
+            let initOpt = null;
+            if (
+              companySelect &&
+              companySelect.value &&
+              companySelect.value !== "" &&
+              companySelect.value !== "custom"
+            ) {
+              initOpt = companySelect.selectedOptions[0];
+            } else if (
+              consultancySelect &&
+              consultancySelect.value &&
+              consultancySelect.value !== "" &&
+              consultancySelect.value !== "custom"
+            ) {
+              initOpt = consultancySelect.selectedOptions[0];
+            }
+            if (initOpt && initOpt.dataset && initOpt.dataset.bank) {
+              const b = initOpt.dataset.bank.replace(/\\n/g, "\n");
+              if (b && (!bankEl.value || bankEl.value.trim().length === 0))
+                bankEl.value = b;
+            }
+          } catch (e) {
+            // ignore initialization errors
+          }
+        })();
+        // Render the initial page and attach handlers so table rows are clickable
+        renderPage();
+        attachKeyHandlers();
       </script>
     </div>
 
