@@ -168,7 +168,7 @@ def save_company(name, bank_details):
         writer.writerow(row)
 
 def load_consultancies():
-    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str, 'bank_details': str}"""
+    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str, 'bank_details': str, 'notes': str}"""
     if not os.path.exists(CONSULTANCIES_FILE):
         return []
     consultancies = []
@@ -181,11 +181,14 @@ def load_consultancies():
                 pass
             # normalize bank details if present (backwards compatible)
             row['bank_details'] = _normalize_multiline(row.get('bank_details', ''))
+            # notes are optional free text
+            row['notes'] = (row.get('notes') or '').strip()
             consultancies.append(row)
     return consultancies
 
-def save_consultancy(name, bank_details=''):
-    fieldnames = ['consultancy_id', 'name', 'bank_details']
+def save_consultancy(name, bank_details='', notes=''):
+    # support notes for consultancies
+    fieldnames = ['consultancy_id', 'name', 'bank_details', 'notes']
     consultancies = load_consultancies()
     next_id = 1
     if consultancies:
@@ -193,13 +196,29 @@ def save_consultancy(name, bank_details=''):
             next_id = max([c.get('consultancy_id') or 0 for c in consultancies]) + 1
         except Exception:
             next_id = len(consultancies) + 1
-    row = {'consultancy_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details)}
+    row = {'consultancy_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details), 'notes': (notes or '').strip()}
     file_exists = os.path.exists(CONSULTANCIES_FILE)
     with open(CONSULTANCIES_FILE, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
+
+
+def rewrite_consultancies(consultancies_list):
+    """Overwrite consultancies CSV with provided list."""
+    fieldnames = ['consultancy_id', 'name', 'bank_details', 'notes']
+    with open(CONSULTANCIES_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for c in consultancies_list:
+            writer.writerow({
+                'consultancy_id': c.get('consultancy_id') or '',
+                'name': c.get('name',''),
+                'bank_details': c.get('bank_details',''),
+                'notes': c.get('notes','')
+            })
+
 
 @app.route('/')
 def index():
@@ -314,11 +333,94 @@ def consultancies_view():
     if request.method == 'POST':
         name = request.form.get('name','').strip()
         bank_details = request.form.get('bank_details','')
+        notes = request.form.get('notes','')
         if name:
             save_consultancy(name, bank_details)
         return redirect(url_for('index'))
     consultancies = load_consultancies()
     return render_template('consultancies.html', consultancies=consultancies)
+
+def rewrite_bills(bills_list):
+    """Overwrite the bills CSV with the provided list of bill dicts."""
+    fieldnames = ['bill_number', 'consultancy_name', 'client_name', 'date', 'billed_for', 'items', 'total', 'bank_details']
+    with open(BILLS_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in bills_list:
+            # items may be a list (loaded) or already a string
+            items = row.get('items', '')
+            if isinstance(items, list):
+                items_str = ';'.join([f"{it.get('description','')}:{it.get('cost',0)}" for it in items])
+            else:
+                items_str = items
+            writer.writerow({
+                'bill_number': row.get('bill_number') or '',
+                'consultancy_name': row.get('consultancy_name',''),
+                'client_name': row.get('client_name',''),
+                'date': row.get('date',''),
+                'billed_for': row.get('billed_for',''),
+                'items': items_str,
+                'total': row.get('total',0),
+                'bank_details': row.get('bank_details','')
+            })
+
+
+@app.route('/delete_bill/<int:bill_number>', methods=['POST'])
+def delete_bill(bill_number):
+    bills = load_bills()
+    remaining = []
+    deleted = False
+    for b in bills:
+        try:
+            if int(b.get('bill_number')) == int(bill_number):
+                deleted = True
+                continue
+        except Exception:
+            # fallback string comparison
+            if str(b.get('bill_number')) == str(bill_number):
+                deleted = True
+                continue
+        remaining.append(b)
+    if not deleted:
+        abort(404)
+    # rewrite CSV without the deleted bill
+    rewrite_bills(remaining)
+    return redirect(url_for('index'))
+
+@app.route('/consultancies/edit/<int:consultancy_id>', methods=['GET', 'POST'])
+def edit_consultancy(consultancy_id):
+    if request.method == 'POST':
+        name = request.form.get('name','').strip()
+        bank_details = request.form.get('bank_details','')
+        notes = request.form.get('notes','')
+        consultancies = load_consultancies()
+        updated = False
+        for c in consultancies:
+            try:
+                cid = int(c.get('consultancy_id')) if c.get('consultancy_id') not in (None, '') else None
+            except Exception:
+                cid = c.get('consultancy_id')
+            if cid == consultancy_id:
+                c['name'] = name
+                c['bank_details'] = _normalize_multiline(bank_details)
+                c['notes'] = (notes or '').strip()
+                updated = True
+                break
+        if not updated:
+            abort(404)
+        rewrite_consultancies(consultancies)
+        return redirect(url_for('consultancies_view'))
+
+    # GET: render edit form
+    consultancies = load_consultancies()
+    for c in consultancies:
+        try:
+            cid = int(c.get('consultancy_id')) if c.get('consultancy_id') not in (None, '') else None
+        except Exception:
+            cid = c.get('consultancy_id')
+        if cid == consultancy_id:
+            return render_template('consultancies_edit.html', consultancy=c)
+    abort(404)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Edit Consultancy</title>
+    <style>
+      body {
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+        margin: 24px;
+      }
+      form {
+        max-width: 800px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Edit Consultancy</h1>
+    <form
+      method="POST"
+      action="{{ url_for('edit_consultancy', consultancy_id=consultancy.consultancy_id) }}"
+    >
+      <div>
+        <label>Name</label>
+        <input
+          type="text"
+          name="name"
+          value="{{ consultancy.name }}"
+          required
+        />
+      </div>
+      <div style="margin-top: 8px">
+        <label>Bank Details</label>
+        <textarea name="bank_details">
+{{ consultancy.get('bank_details','') }}</textarea
+        >
+      </div>
+      <div style="margin-top: 8px">
+        <label>Notes</label>
+        <textarea name="notes">{{ consultancy.get('notes','') }}</textarea>
+      </div>
+      <div style="margin-top: 12px">
+        <button type="submit">Save</button>
+        <a href="/consultancies">Cancel</a>
+      </div>
+    </form>
+  </body>
+</html>
