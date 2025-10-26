@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Consultancy Bill Generator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .form-group {
+        margin: 15px 0;
+      }
+      label {
+        display: block;
+        margin: 5px 0;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+      }
+      .items-container {
+        margin: 15px 0;
+      }
+      .item-row {
+        display: flex;
+        gap: 10px;
+        margin: 5px 0;
+      }
+      .item-row input {
+        flex: 1;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+      }
+      .bill {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin: 20px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      #bills-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      #bills-table th,
+      #bills-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      #bills-table tr:hover {
+        background: #f5faff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Consultancy Bill Generator</h1>
+
+      <!-- Bill Generation Form -->
+      <form method="POST" action="/generate">
+        <div class="form-group">
+          <label>Consultancy Name:</label>
+          <input type="text" name="consultancy_name" required />
+        </div>
+
+        <div class="form-group">
+          <label>Client Name (Billed To):</label>
+          <input type="text" name="client_name" required />
+        </div>
+
+        <div class="form-group">
+          <label>Billed For (e.g. "Aug 2025"):</label>
+          <input
+            type="text"
+            name="billed_for"
+            placeholder="Optional - e.g. Aug 2025"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Bank Details:</label>
+          <textarea name="bank_details" rows="4" required>
+Bank: Your Bank Name
+Account Number: 123456789
+IFSC: ABCD0123456</textarea
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Items:</label>
+          <div class="items-container" id="items-container">
+            <div class="item-row">
+              <input
+                type="text"
+                name="item_description[]"
+                placeholder="Description"
+                required
+              />
+              <input
+                type="number"
+                name="item_cost[]"
+                placeholder="Cost"
+                step="0.01"
+                required
+              />
+            </div>
+          </div>
+          <button type="button" onclick="addItem()">Add Another Item</button>
+        </div>
+
+        <button type="submit">Generate Bill</button>
+      </form>
+
+      <hr />
+
+      <!-- Previous Bills -->
+      <h2>Previous Bills</h2>
+
+      <table id="bills-table">
+        <thead>
+          <tr>
+            <th>Bill #</th>
+            <th>Consultancy</th>
+            <th>Client</th>
+            <th>Date</th>
+            <th style="text-align: right">Total (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bill in bills %} {% if bill.get('bill_number') %}
+          <tr
+            data-href="{{ url_for('show_bill', bill_number=bill['bill_number']) }}"
+            style="cursor: pointer"
+            onclick="window.location=this.dataset.href"
+            tabindex="0"
+          >
+            {% else %}
+          </tr>
+
+          <tr data-href="#" style="cursor: default" tabindex="0">
+            {% endif %}
+            <td>{{ bill['bill_number'] }}</td>
+            <td>{{ bill.get('consultancy_name','') }}</td>
+            <td>{{ bill.get('client_name','') }}</td>
+            <td>{{ bill['date'] }}</td>
+            <td style="text-align: right">
+              {{ "%.2f"|format(bill['total']) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <a href="/download_csv" download>
+        <button>Download All Bills (CSV)</button>
+      </a>
+
+      <style>
+        #bills-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 12px;
+        }
+        #bills-table th,
+        #bills-table td {
+          border: 1px solid #ddd;
+          padding: 8px;
+        }
+        #bills-table tr:hover {
+          background: #f5faff;
+        }
+      </style>
+
+      <script>
+        // keyboard accessibility: Enter opens selected row
+        document.querySelectorAll("#bills-table tbody tr").forEach((r) => {
+          r.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") window.location = r.dataset.href;
+          });
+        });
+      </script>
+    </div>
+
+    <script>
+      function addItem() {
+        const container = document.getElementById("items-container");
+        const newRow = document.createElement("div");
+        newRow.className = "item-row";
+        newRow.innerHTML = `
+                <input type="text" name="item_description[]" placeholder="Description">
+                <input type="number" name="item_cost[]" placeholder="Cost" step="0.01">
+            `;
+        container.appendChild(newRow);
+      }
+    </script>
+  </body>
+</html>
