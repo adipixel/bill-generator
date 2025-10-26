@@ -165,7 +165,12 @@
           <select name="consultancy_id" id="consultancy-select">
             <option value="">-- Select consultancy --</option>
             {% for c in consultancies %}
-            <option value="{{ c.consultancy_id }}">{{ c.name }}</option>
+            <option
+              value="{{ c.consultancy_id }}"
+              data-bank="{{ c.get('bank_details','')|replace('\n','\\n')|e }}"
+            >
+              {{ c.name }}
+            </option>
             {% endfor %}
             <option value="custom">Other (enter name)</option>
           </select>
@@ -479,6 +484,18 @@ IFSC: ABCD0123456</textarea
             const v = consultancySelect.value;
             consultancyInput.style.display = v === "custom" ? "block" : "none";
             if (v !== "custom") consultancyInput.value = "";
+            // Prefill bank details when a consultancy with bank info is selected
+            const opt = consultancySelect.selectedOptions[0];
+            const consultBank =
+              opt && opt.dataset && opt.dataset.bank
+                ? opt.dataset.bank.replace(/\\n/g, "\n")
+                : "";
+            if (
+              consultBank &&
+              (!bankDetails.value || bankDetails.value.trim().length === 0)
+            ) {
+              bankDetails.value = consultBank;
+            }
           });
         }
       </script>

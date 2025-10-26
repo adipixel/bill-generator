@@ -18,10 +18,16 @@
         padding: 8px;
       }
       form {
-        max-width: 600px;
+        max-width: 800px;
       }
       .actions {
         margin-top: 12px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 8px;
+        border: 1px solid #ddd;
       }
     </style>
   </head>
@@ -31,6 +37,13 @@
       <div>
         <label>Name</label>
         <input type="text" name="name" required />
+      </div>
+      <div style="margin-top: 8px">
+        <label>Bank Details (optional)</label>
+        <textarea
+          name="bank_details"
+          placeholder="Paste bank account, IFSC, etc."
+        ></textarea>
       </div>
       <div class="actions">
         <button type="submit">Add Consultancy</button>
@@ -45,6 +58,7 @@
         <tr>
           <th>ID</th>
           <th>Name</th>
+          <th>Bank Details</th>
         </tr>
       </thead>
       <tbody>
@@ -52,6 +66,7 @@
         <tr>
           <td>{{ c.consultancy_id }}</td>
           <td>{{ c.name }}</td>
+          <td style="white-space: pre-line">{{ c.get('bank_details','') }}</td>
         </tr>
         {% endfor %}
       </tbody>

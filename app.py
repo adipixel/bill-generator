@@ -168,7 +168,7 @@ def save_company(name, bank_details):
         writer.writerow(row)
 
 def load_consultancies():
-    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str}"""
+    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str, 'bank_details': str}"""
     if not os.path.exists(CONSULTANCIES_FILE):
         return []
     consultancies = []
@@ -179,11 +179,13 @@ def load_consultancies():
                 row['consultancy_id'] = int(row.get('consultancy_id')) if row.get('consultancy_id') not in (None, '') else None
             except (ValueError, TypeError):
                 pass
+            # normalize bank details if present (backwards compatible)
+            row['bank_details'] = _normalize_multiline(row.get('bank_details', ''))
             consultancies.append(row)
     return consultancies
 
-def save_consultancy(name):
-    fieldnames = ['consultancy_id', 'name']
+def save_consultancy(name, bank_details=''):
+    fieldnames = ['consultancy_id', 'name', 'bank_details']
     consultancies = load_consultancies()
     next_id = 1
     if consultancies:
@@ -191,7 +193,7 @@ def save_consultancy(name):
             next_id = max([c.get('consultancy_id') or 0 for c in consultancies]) + 1
         except Exception:
             next_id = len(consultancies) + 1
-    row = {'consultancy_id': next_id, 'name': name}
+    row = {'consultancy_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details)}
     file_exists = os.path.exists(CONSULTANCIES_FILE)
     with open(CONSULTANCIES_FILE, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -311,8 +313,9 @@ def companies_view():
 def consultancies_view():
     if request.method == 'POST':
         name = request.form.get('name','').strip()
+        bank_details = request.form.get('bank_details','')
         if name:
-            save_consultancy(name)
+            save_consultancy(name, bank_details)
         return redirect(url_for('index'))
     consultancies = load_consultancies()
     return render_template('consultancies.html', consultancies=consultancies)
