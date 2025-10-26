@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, abort
+from flask import Flask, render_template, request, send_file, abort, redirect, url_for
 import csv
 import os
 from datetime import datetime
@@ -20,6 +20,8 @@ app = Flask(__name__)
 # Files
 BILLS_FILE = 'bills.csv'
 BILL_COUNTER_FILE = 'bill_counter.txt'
+COMPANIES_FILE = 'companies.csv'
+CONSULTANCIES_FILE = 'consultancies.csv'
 
 def get_next_bill_number():
     try:
@@ -131,17 +133,105 @@ def save_bill(bill_data):
             writer.writeheader()
         writer.writerow(row)
 
+def load_companies():
+    """Return list of companies as dicts: {'company_id': int, 'name': str, 'bank_details': str}"""
+    if not os.path.exists(COMPANIES_FILE):
+        return []
+    companies = []
+    with open(COMPANIES_FILE, 'r', newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                row['company_id'] = int(row.get('company_id')) if row.get('company_id') not in (None, '') else None
+            except (ValueError, TypeError):
+                pass
+            # normalize bank details
+            row['bank_details'] = _normalize_multiline(row.get('bank_details',''))
+            companies.append(row)
+    return companies
+
+def save_company(name, bank_details):
+    fieldnames = ['company_id', 'name', 'bank_details']
+    companies = load_companies()
+    next_id = 1
+    if companies:
+        try:
+            next_id = max([c.get('company_id') or 0 for c in companies]) + 1
+        except Exception:
+            next_id = len(companies) + 1
+    row = {'company_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details)}
+    file_exists = os.path.exists(COMPANIES_FILE)
+    with open(COMPANIES_FILE, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
+def load_consultancies():
+    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str}"""
+    if not os.path.exists(CONSULTANCIES_FILE):
+        return []
+    consultancies = []
+    with open(CONSULTANCIES_FILE, 'r', newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                row['consultancy_id'] = int(row.get('consultancy_id')) if row.get('consultancy_id') not in (None, '') else None
+            except (ValueError, TypeError):
+                pass
+            consultancies.append(row)
+    return consultancies
+
+def save_consultancy(name):
+    fieldnames = ['consultancy_id', 'name']
+    consultancies = load_consultancies()
+    next_id = 1
+    if consultancies:
+        try:
+            next_id = max([c.get('consultancy_id') or 0 for c in consultancies]) + 1
+        except Exception:
+            next_id = len(consultancies) + 1
+    row = {'consultancy_id': next_id, 'name': name}
+    file_exists = os.path.exists(CONSULTANCIES_FILE)
+    with open(CONSULTANCIES_FILE, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
 @app.route('/')
 def index():
     bills = load_bills()
-    return render_template('index.html', bills=reversed(bills))
+    companies = load_companies()
+    consultancies = load_consultancies()
+    return render_template('index.html', bills=reversed(bills), companies=companies, consultancies=consultancies)
 
 @app.route('/generate', methods=['POST'])
 def generate_bill():
     # Get form data
     # Get both client and consultancy names
     client_name = request.form.get('client_name') or ''
-    consultancy_name = request.form.get('consultancy_name') or request.form.get('client_name') or ''
+    # Resolve consultancy from select (consultancy_id) or fallback to text field
+    consultancy_name = ''
+    consultancy_id = request.form.get('consultancy_id') or ''
+    if consultancy_id and consultancy_id != 'custom':
+        # try to resolve consultancy name
+        try:
+            c_id = int(consultancy_id)
+        except Exception:
+            c_id = consultancy_id
+        for c in load_consultancies():
+            # compare int or string
+            try:
+                if int(c.get('consultancy_id')) == int(c_id):
+                    consultancy_name = c.get('name') or ''
+                    break
+            except Exception:
+                if str(c.get('consultancy_id')) == str(c_id):
+                    consultancy_name = c.get('name') or ''
+                    break
+    if not consultancy_name:
+        consultancy_name = request.form.get('consultancy_name') or request.form.get('client_name') or ''
     bank_details = request.form.get('bank_details', '')
     billed_for = request.form.get('billed_for', '')
     # Normalize input bank details to remove extra blank lines/spaces
@@ -203,6 +293,29 @@ def show_bill(bill_number):
                 return render_template('bill_display.html', bill=b)
     # not found
     abort(404)
+
+# Companies management
+@app.route('/companies', methods=['GET', 'POST'])
+def companies_view():
+    if request.method == 'POST':
+        name = request.form.get('name','').strip()
+        bank_details = request.form.get('bank_details','')
+        if name:
+            save_company(name, bank_details)
+        return redirect(url_for('index'))
+    companies = load_companies()
+    return render_template('companies.html', companies=companies)
+
+# Consultancies management
+@app.route('/consultancies', methods=['GET', 'POST'])
+def consultancies_view():
+    if request.method == 'POST':
+        name = request.form.get('name','').strip()
+        if name:
+            save_consultancy(name)
+        return redirect(url_for('index'))
+    consultancies = load_consultancies()
+    return render_template('consultancies.html', consultancies=consultancies)
 
 if __name__ == '__main__':
     app.run(debug=True)

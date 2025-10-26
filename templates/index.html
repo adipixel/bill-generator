@@ -3,90 +3,202 @@
   <head>
     <title>Consultancy Bill Generator</title>
     <style>
+      :root {
+        --bg: #f6f8fb;
+        --card: #ffffff;
+        --muted: #6b7280;
+        --accent: #0f62fe;
+        --accent-600: #0b4ed6;
+        --success: #16a34a;
+        --radius: 10px;
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        background: var(--bg);
+        margin: 0;
+        color: #111;
       }
       .container {
-        max-width: 800px;
-        margin: 0 auto;
+        max-width: 1100px;
+        margin: 28px auto;
+        padding: 20px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+      }
+      .card {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 18px;
+        box-shadow: 0 8px 30px rgba(16, 24, 40, 0.06);
       }
       .form-group {
-        margin: 15px 0;
+        margin: 12px 0;
       }
       label {
         display: block;
-        margin: 5px 0;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 13px;
       }
-      input,
+      input[type="text"],
+      input[type="number"],
+      select,
       textarea {
         width: 100%;
-        padding: 8px;
-        margin: 5px 0;
+        padding: 10px 12px;
+        border: 1px solid #e6eef8;
+        border-radius: 8px;
+        background: white;
       }
-      .items-container {
-        margin: 15px 0;
+      textarea {
+        min-height: 88px;
+        resize: vertical;
       }
       .item-row {
         display: flex;
         gap: 10px;
-        margin: 5px 0;
+        align-items: center;
       }
       .item-row input {
         flex: 1;
       }
-      button {
-        padding: 10px 20px;
-        margin: 5px;
+      .row {
+        display: flex;
+        gap: 12px;
       }
-      .bill {
-        border: 1px solid #ccc;
-        padding: 20px;
-        margin: 20px 0;
+      .row .col {
+        flex: 1;
+      }
+      button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.secondary {
+        background: #f3f4f6;
+        color: #111;
+        border: 1px solid #e5e7eb;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin: 15px 0;
+        margin-top: 12px;
       }
       th,
       td {
-        border: 1px solid #ddd;
-        padding: 8px;
+        padding: 10px;
+        border-bottom: 1px solid #eef2f7;
         text-align: left;
       }
       th {
-        background-color: #f2f2f2;
+        background: #fbfdff;
+        color: var(--muted);
+        font-weight: 700;
       }
-      #bills-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 12px;
+      tr.clickable:hover {
+        background: #f8fbff;
+        cursor: pointer;
       }
-      #bills-table th,
-      #bills-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
+      .filters {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
       }
-      #bills-table tr:hover {
-        background: #f5faff;
+      .small {
+        font-size: 13px;
+        padding: 6px 10px;
+      }
+      @media (max-width: 800px) {
+        .row {
+          flex-direction: column;
+        }
+        .container {
+          padding: 12px;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Consultancy Bill Generator</h1>
+      <h1>
+        Consultancy Bill Generator
+        <a href="/companies" style="margin-left: 12px"
+          ><button type="button" class="secondary">Manage Companies</button></a
+        >
+        <a href="/consultancies" style="margin-left: 8px"
+          ><button type="button" class="secondary">
+            Manage Consultancies
+          </button></a
+        >
+      </h1>
 
       <!-- Bill Generation Form -->
       <form method="POST" action="/generate">
         <div class="form-group">
-          <label>Consultancy Name:</label>
-          <input type="text" name="consultancy_name" required />
+          <label>Consultancy:</label>
+          <select name="consultancy_id" id="consultancy-select">
+            <option value="">-- Select consultancy --</option>
+            {% for c in consultancies %}
+            <option value="{{ c.consultancy_id }}">{{ c.name }}</option>
+            {% endfor %}
+            <option value="custom">Other (enter name)</option>
+          </select>
+          <input
+            type="text"
+            name="consultancy_name"
+            id="consultancy-name-input"
+            placeholder="Enter consultancy name"
+            style="display: none; margin-top: 8px"
+          />
         </div>
 
         <div class="form-group">
-          <label>Client Name (Billed To):</label>
-          <input type="text" name="client_name" required />
+          <label>Client / Company (Billed To):</label>
+          <select name="company_id" id="company-select">
+            <option value="">-- Select a company --</option>
+            {% for c in companies %}
+            <option
+              value="{{ c.company_id }}"
+              data-bank="{{ c.bank_details|replace('\n','\\n')|e }}"
+            >
+              {{ c.name }}
+            </option>
+            {% endfor %}
+            <option value="custom">Other (enter name)</option>
+          </select>
+          <input
+            type="text"
+            name="client_name"
+            id="client-name-input"
+            placeholder="Enter client name"
+            style="display: none; margin-top: 8px"
+          />
         </div>
 
         <div class="form-group">
@@ -137,6 +249,33 @@ IFSC: ABCD0123456</textarea
       <!-- Previous Bills -->
       <h2>Previous Bills</h2>
 
+      <div
+        style="
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          margin-bottom: 12px;
+        "
+      >
+        <div>
+          <label for="filter-client">Filter by client:</label>
+          <select id="filter-client">
+            <option value="all">All</option>
+            {% for c in companies %}
+            <option value="{{ c.name }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="filter-client-text">Search client:</label>
+          <input
+            id="filter-client-text"
+            type="text"
+            placeholder="Type client name to search"
+          />
+        </div>
+      </div>
+
       <table id="bills-table">
         <thead>
           <tr>
@@ -172,6 +311,25 @@ IFSC: ABCD0123456</textarea
         </tbody>
       </table>
 
+      <!-- Pagination controls -->
+      <div
+        id="pagination-controls"
+        style="display: flex; gap: 8px; align-items: center; margin-top: 8px"
+      >
+        <button id="prev-page" type="button">Prev</button>
+        <span id="page-info">Page 1</span>
+        <button id="next-page" type="button">Next</button>
+        <label style="margin-left: 8px">
+          Rows per page:
+          <select id="rows-per-page">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+      </div>
+
       <a href="/download_csv" download>
         <button>Download All Bills (CSV)</button>
       </a>
@@ -193,12 +351,136 @@ IFSC: ABCD0123456</textarea
       </style>
 
       <script>
-        // keyboard accessibility: Enter opens selected row
-        document.querySelectorAll("#bills-table tbody tr").forEach((r) => {
-          r.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") window.location = r.dataset.href;
+        // Elements
+        const tbody = document.querySelector("#bills-table tbody");
+        let allRows = Array.from(tbody ? tbody.querySelectorAll("tr") : []);
+        let filteredRows = allRows.slice();
+        let currentPage = 1;
+        const pageInfo = document.getElementById("page-info");
+        const prevBtn = document.getElementById("prev-page");
+        const nextBtn = document.getElementById("next-page");
+        const rowsPerPageEl = document.getElementById("rows-per-page");
+
+        function rowsPerPage() {
+          return parseInt(rowsPerPageEl.value || "10", 10);
+        }
+        function totalPages() {
+          return Math.max(1, Math.ceil(filteredRows.length / rowsPerPage()));
+        }
+
+        function renderPage() {
+          const start = (currentPage - 1) * rowsPerPage();
+          const end = start + rowsPerPage();
+          tbody.innerHTML = "";
+          filteredRows.slice(start, end).forEach((r) => tbody.appendChild(r));
+          pageInfo.textContent = `Page ${currentPage} of ${totalPages()}`;
+          prevBtn.disabled = currentPage <= 1;
+          nextBtn.disabled = currentPage >= totalPages();
+        }
+
+        // Keyboard accessibility: Enter opens selected row
+        function attachKeyHandlers() {
+          document.querySelectorAll("#bills-table tbody tr").forEach((r) => {
+            r.tabIndex = 0;
+            r.addEventListener("keypress", (e) => {
+              if (e.key === "Enter" && r.dataset.href)
+                window.location = r.dataset.href;
+            });
           });
+        }
+
+        // Filter logic
+        const filterSelect = document.getElementById("filter-client");
+        const filterText = document.getElementById("filter-client-text");
+        function applyFilter() {
+          const sel = filterSelect ? filterSelect.value : "all";
+          const txt = filterText ? filterText.value.trim().toLowerCase() : "";
+          filteredRows = allRows.filter((r) => {
+            const clientCell = r.children[2];
+            const client = clientCell ? clientCell.textContent.trim() : "";
+            let show = true;
+            if (sel && sel !== "all") show = client === sel;
+            if (show && txt) show = client.toLowerCase().includes(txt);
+            return show;
+          });
+          currentPage = 1;
+          renderPage();
+          attachKeyHandlers();
+        }
+        if (filterSelect)
+          filterSelect.addEventListener("change", () => {
+            if (filterText) filterText.value = "";
+            applyFilter();
+          });
+        if (filterText)
+          filterText.addEventListener("input", () => {
+            if (filterSelect) filterSelect.value = "all";
+            applyFilter();
+          });
+
+        // Pagination controls
+        prevBtn.addEventListener("click", () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderPage();
+            attachKeyHandlers();
+          }
         });
+        nextBtn.addEventListener("click", () => {
+          if (currentPage < totalPages()) {
+            currentPage++;
+            renderPage();
+            attachKeyHandlers();
+          }
+        });
+        rowsPerPageEl.addEventListener("change", () => {
+          currentPage = 1;
+          renderPage();
+          attachKeyHandlers();
+        });
+
+        // Company select behavior: show custom input when 'Other' selected
+        const companySelect = document.getElementById("company-select");
+        const clientInput = document.getElementById("client-name-input");
+        const bankDetails = document.querySelector(
+          'textarea[name="bank_details"]'
+        );
+        if (companySelect) {
+          companySelect.addEventListener("change", () => {
+            const val = companySelect.value;
+            if (val === "custom" || val === "") {
+              clientInput.style.display = val === "custom" ? "block" : "none";
+              if (val === "") clientInput.value = "";
+            } else {
+              clientInput.style.display = "none";
+              const opt = companySelect.selectedOptions[0];
+              if (opt) clientInput.value = opt.text;
+              const bank =
+                opt && opt.dataset && opt.dataset.bank
+                  ? opt.dataset.bank.replace(/\\n/g, "\n")
+                  : "";
+              if (
+                bank &&
+                (!bankDetails.value || bankDetails.value.trim().length === 0)
+              ) {
+                bankDetails.value = bank;
+              }
+            }
+          });
+        }
+
+        // consultancy select behaviour
+        const consultancySelect = document.getElementById("consultancy-select");
+        const consultancyInput = document.getElementById(
+          "consultancy-name-input"
+        );
+        if (consultancySelect) {
+          consultancySelect.addEventListener("change", () => {
+            const v = consultancySelect.value;
+            consultancyInput.style.display = v === "custom" ? "block" : "none";
+            if (v !== "custom") consultancyInput.value = "";
+          });
+        }
       </script>
     </div>
 

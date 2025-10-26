@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Consultancies</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 24px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      form {
+        max-width: 600px;
+      }
+      .actions {
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Consultancies</h1>
+    <form method="POST" action="/consultancies">
+      <div>
+        <label>Name</label>
+        <input type="text" name="name" required />
+      </div>
+      <div class="actions">
+        <button type="submit">Add Consultancy</button>
+        <a href="/">Back</a>
+      </div>
+    </form>
+
+    <hr />
+    <h2>Existing Consultancies</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in consultancies %}
+        <tr>
+          <td>{{ c.consultancy_id }}</td>
+          <td>{{ c.name }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>
