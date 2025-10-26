@@ -29,6 +29,25 @@
         padding: 8px;
         border: 1px solid #ddd;
       }
+      /* Button styles */
+      .btn {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-primary {
+        background: #0f62fe;
+        color: #fff;
+        border: 1px solid #0b4ed6;
+      }
+      .btn-secondary {
+        background: #f3f4f6;
+        color: #111;
+        border: 1px solid #e5e7eb;
+      }
     </style>
   </head>
   <body>
@@ -53,8 +72,13 @@
         ></textarea>
       </div>
       <div class="actions">
-        <button type="submit">Add Consultancy</button>
-        <a href="/">Back</a>
+        <button type="submit" class="btn btn-primary">Add Consultancy</button>
+        <a
+          href="/"
+          class="btn btn-secondary"
+          style="text-decoration: none; margin-left: 8px; display: inline-block"
+          >Back</a
+        >
       </div>
     </form>
 
@@ -67,7 +91,7 @@
           <th>Name</th>
           <th>Bank Details</th>
           <th>Notes</th>
-          <th>Actions</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -80,6 +104,8 @@
           <td>
             <a
               href="{{ url_for('edit_consultancy', consultancy_id=c.consultancy_id) }}"
+              class="btn btn-secondary"
+              style="text-decoration: none"
               >Edit</a
             >
           </td>

@@ -162,7 +162,7 @@
       <form method="POST" action="/generate">
         <div class="form-group">
           <label>Consultancy:</label>
-          <select name="consultancy_id" id="consultancy-select">
+          <select name="consultancy_id" id="consultancy-select" required>
             <option value="">-- Select consultancy --</option>
             {% for c in consultancies %}
             <option
@@ -185,7 +185,7 @@
 
         <div class="form-group">
           <label>Client / Company (Billed To):</label>
-          <select name="company_id" id="company-select">
+          <select name="company_id" id="company-select" required>
             <option value="">-- Select a company --</option>
             {% for c in companies %}
             <option
@@ -245,7 +245,9 @@
               />
             </div>
           </div>
-          <button type="button" onclick="addItem()">Add Another Item</button>
+          <button type="button" class="secondary" onclick="addItem()">
+            Add Another Item
+          </button>
         </div>
 
         <button type="submit">Generate Bill</button>
@@ -334,9 +336,9 @@
         id="pagination-controls"
         style="display: flex; gap: 8px; align-items: center; margin-top: 8px"
       >
-        <button id="prev-page" type="button">Prev</button>
+        <button id="prev-page" type="button" class="secondary">Prev</button>
         <span id="page-info">Page 1</span>
-        <button id="next-page" type="button">Next</button>
+        <button id="next-page" type="button" class="secondary">Next</button>
         <label style="margin-left: 8px">
           Rows per page:
           <select id="rows-per-page">
@@ -349,7 +351,7 @@
       </div>
 
       <a href="/download_csv" download>
-        <button>Download All Bills (CSV)</button>
+        <button class="secondary">Download All Bills (CSV)</button>
       </a>
 
       <style>

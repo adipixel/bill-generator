@@ -18,52 +18,63 @@
         padding: 8px;
       }
       form {
-        max-width: 600px;
+        max-width: 800px;
       }
-      textarea {
-        width: 100%;
-        height: 80px;
+      .btn {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
       }
-      .actions {
-        margin-top: 12px;
+      .btn-primary {
+        background: #0f62fe;
+        color: #fff;
+        border: 1px solid #0b4ed6;
+      }
+      .btn-secondary {
+        background: #f3f4f6;
+        color: #111;
+        border: 1px solid #e5e7eb;
       }
     </style>
   </head>
   <body>
     <h1>Companies</h1>
+
     <form method="POST" action="/companies">
       <div>
         <label>Name</label>
         <input type="text" name="name" required />
       </div>
-      <div>
-        <label>Bank Details</label>
-        <textarea name="bank_details">
-Bank: Your Bank Name\nAccount Number: 123456789\nIFSC: ABCD0123456</textarea
+
+      <div style="margin-top: 12px">
+        <button type="submit" class="btn btn-primary">Add Company</button>
+        <a
+          href="/"
+          class="btn btn-secondary"
+          style="text-decoration: none; margin-left: 8px; display: inline-block"
+          >Back</a
         >
-      </div>
-      <div class="actions">
-        <button type="submit">Add Company</button>
-        <a href="/">Back</a>
       </div>
     </form>
 
     <hr />
+
     <h2>Existing Companies</h2>
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Name</th>
-          <th>Bank Details</th>
         </tr>
       </thead>
       <tbody>
-        {% for c in companies %}
+        {% for comp in companies %}
         <tr>
-          <td>{{ c.company_id }}</td>
-          <td>{{ c.name }}</td>
-          <td>{{ c.bank_details|replace('\n','<br />')|safe }}</td>
+          <td>{{ comp.company_id }}</td>
+          <td>{{ comp.name }}</td>
         </tr>
         {% endfor %}
       </tbody>

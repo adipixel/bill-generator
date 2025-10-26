@@ -1,2 +1,2 @@
-consultancy_id,name
-1,Poonam Mhamunkar
+consultancy_id,name,bank_details,notes
+1,Aditya Mhamunkar,1234,hello

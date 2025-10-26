@@ -134,7 +134,7 @@ def save_bill(bill_data):
         writer.writerow(row)
 
 def load_companies():
-    """Return list of companies as dicts: {'company_id': int, 'name': str, 'bank_details': str}"""
+    """Return list of companies as dicts: {'company_id': int, 'name': str}"""
     if not os.path.exists(COMPANIES_FILE):
         return []
     companies = []
@@ -145,13 +145,13 @@ def load_companies():
                 row['company_id'] = int(row.get('company_id')) if row.get('company_id') not in (None, '') else None
             except (ValueError, TypeError):
                 pass
-            # normalize bank details
-            row['bank_details'] = _normalize_multiline(row.get('bank_details',''))
-            companies.append(row)
+            # Only keep id and name for companies (no bank_details stored here)
+            companies.append({'company_id': row.get('company_id'), 'name': row.get('name','')})
     return companies
 
-def save_company(name, bank_details):
-    fieldnames = ['company_id', 'name', 'bank_details']
+def save_company(name):
+    """Save a company with an auto-incrementing ID. Companies no longer store bank_details."""
+    fieldnames = ['company_id', 'name']
     companies = load_companies()
     next_id = 1
     if companies:
@@ -159,7 +159,7 @@ def save_company(name, bank_details):
             next_id = max([c.get('company_id') or 0 for c in companies]) + 1
         except Exception:
             next_id = len(companies) + 1
-    row = {'company_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details)}
+    row = {'company_id': next_id, 'name': name}
     file_exists = os.path.exists(COMPANIES_FILE)
     with open(COMPANIES_FILE, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -225,7 +225,9 @@ def index():
     bills = load_bills()
     companies = load_companies()
     consultancies = load_consultancies()
-    return render_template('index.html', bills=reversed(bills), companies=companies, consultancies=consultancies)
+    # Convert to a concrete list in reversed order so templates (and tojson) can serialize it
+    bills_rev = list(reversed(bills))
+    return render_template('index.html', bills=bills_rev, companies=companies, consultancies=consultancies)
 
 @app.route('/generate', methods=['POST'])
 def generate_bill():
@@ -320,9 +322,8 @@ def show_bill(bill_number):
 def companies_view():
     if request.method == 'POST':
         name = request.form.get('name','').strip()
-        bank_details = request.form.get('bank_details','')
         if name:
-            save_company(name, bank_details)
+            save_company(name)
         return redirect(url_for('index'))
     companies = load_companies()
     return render_template('companies.html', companies=companies)
