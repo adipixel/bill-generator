@@ -584,5 +584,23 @@
         container.appendChild(newRow);
       }
     </script>
+    <script>
+      document.querySelector('select[name="consultancy_id"]').addEventListener('change', async function(e) {
+    const consultancyId = e.target.value;
+    const clientSelect = document.querySelector('select[name="client_name"]');
+    clientSelect.innerHTML = '<option value="">Select Client</option>';
+    
+    if (consultancyId && consultancyId !== 'custom') {
+        const response = await fetch(`/api/companies/${consultancyId}`);
+        const data = await response.json();
+        data.companies.forEach(company => {
+            const option = document.createElement('option');
+            option.value = company.name;
+            option.textContent = company.name;
+            clientSelect.appendChild(option);
+        });
+    }
+});
+    </script>
   </body>
 </html>

@@ -58,6 +58,10 @@
         <input type="text" name="name" required />
       </div>
       <div style="margin-top: 8px">
+        <label>Address</label>
+        <textarea name="address" placeholder="Enter consultancy address"></textarea>
+      </div>
+      <div style="margin-top: 8px">
         <label>Bank Details (optional)</label>
         <textarea
           name="bank_details"
@@ -89,6 +93,7 @@
         <tr>
           <th>ID</th>
           <th>Name</th>
+          <th>Address</th>
           <th>Bank Details</th>
           <th>Notes</th>
           <th></th>
@@ -99,6 +104,7 @@
         <tr>
           <td>{{ c.consultancy_id }}</td>
           <td>{{ c.name }}</td>
+          <td style="white-space: pre-line">{{ c.get('address','') }}</td>
           <td style="white-space: pre-line">{{ c.get('bank_details','') }}</td>
           <td style="white-space: pre-line">{{ c.get('notes','') }}</td>
           <td>

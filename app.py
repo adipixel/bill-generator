@@ -19,20 +19,40 @@ app = Flask(__name__)
 
 # Files
 BILLS_FILE = 'bills.csv'
-BILL_COUNTER_FILE = 'bill_counter.txt'
+BILL_COUNTERS_FILE = 'bill_counters.csv'  # New file for per-consultancy counters
 COMPANIES_FILE = 'companies.csv'
 CONSULTANCIES_FILE = 'consultancies.csv'
 
-def get_next_bill_number():
+def get_next_bill_number(consultancy_id):
+    """Get next bill number for specific consultancy"""
+    counters = {}
     try:
-        with open(BILL_COUNTER_FILE, 'r') as f:
-            return int(f.read().strip()) + 1
+        with open(BILL_COUNTERS_FILE, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    counters[row['consultancy_id']] = int(row['last_number'])
+                except (ValueError, KeyError):
+                    continue
     except FileNotFoundError:
-        return 1001
-
-def save_bill_number(number):
-    with open(BILL_COUNTER_FILE, 'w') as f:
-        f.write(str(number))
+        # Initialize file if it doesn't exist
+        counters = {}
+    
+    # Get or initialize counter for this consultancy
+    current = counters.get(str(consultancy_id), 1000)
+    next_number = current + 1
+    
+    # Update counter
+    counters[str(consultancy_id)] = next_number
+    
+    # Save all counters back
+    with open(BILL_COUNTERS_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['consultancy_id', 'last_number'])
+        writer.writeheader()
+        for cid, num in counters.items():
+            writer.writerow({'consultancy_id': cid, 'last_number': num})
+    
+    return next_number
 
 def load_bills():
     if not os.path.exists(BILLS_FILE):
@@ -134,7 +154,7 @@ def save_bill(bill_data):
         writer.writerow(row)
 
 def load_companies():
-    """Return list of companies as dicts: {'company_id': int, 'name': str}"""
+    """Return list of companies as dicts: {'company_id': int, 'name': str, 'consultancy_id': int}"""
     if not os.path.exists(COMPANIES_FILE):
         return []
     companies = []
@@ -143,15 +163,19 @@ def load_companies():
         for row in reader:
             try:
                 row['company_id'] = int(row.get('company_id')) if row.get('company_id') not in (None, '') else None
+                row['consultancy_id'] = int(row.get('consultancy_id')) if row.get('consultancy_id') not in (None, '') else None
             except (ValueError, TypeError):
                 pass
-            # Only keep id and name for companies (no bank_details stored here)
-            companies.append({'company_id': row.get('company_id'), 'name': row.get('name','')})
+            companies.append({
+                'company_id': row.get('company_id'), 
+                'name': row.get('name',''),
+                'consultancy_id': row.get('consultancy_id')
+            })
     return companies
 
-def save_company(name):
-    """Save a company with an auto-incrementing ID. Companies no longer store bank_details."""
-    fieldnames = ['company_id', 'name']
+def save_company(name, consultancy_id=None):
+    """Save a company with consultancy association"""
+    fieldnames = ['company_id', 'name', 'consultancy_id']
     companies = load_companies()
     next_id = 1
     if companies:
@@ -159,7 +183,11 @@ def save_company(name):
             next_id = max([c.get('company_id') or 0 for c in companies]) + 1
         except Exception:
             next_id = len(companies) + 1
-    row = {'company_id': next_id, 'name': name}
+    row = {
+        'company_id': next_id, 
+        'name': name,
+        'consultancy_id': consultancy_id
+    }
     file_exists = os.path.exists(COMPANIES_FILE)
     with open(COMPANIES_FILE, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -168,7 +196,7 @@ def save_company(name):
         writer.writerow(row)
 
 def load_consultancies():
-    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str, 'bank_details': str, 'notes': str}"""
+    """Return list of consultancies as dicts: {'consultancy_id': int, 'name': str, 'bank_details': str, 'notes': str, 'address': str}"""
     if not os.path.exists(CONSULTANCIES_FILE):
         return []
     consultancies = []
@@ -179,16 +207,15 @@ def load_consultancies():
                 row['consultancy_id'] = int(row.get('consultancy_id')) if row.get('consultancy_id') not in (None, '') else None
             except (ValueError, TypeError):
                 pass
-            # normalize bank details if present (backwards compatible)
+            # normalize multiline fields
             row['bank_details'] = _normalize_multiline(row.get('bank_details', ''))
-            # notes are optional free text
+            row['address'] = _normalize_multiline(row.get('address', ''))
             row['notes'] = (row.get('notes') or '').strip()
             consultancies.append(row)
     return consultancies
 
-def save_consultancy(name, bank_details='', notes=''):
-    # support notes for consultancies
-    fieldnames = ['consultancy_id', 'name', 'bank_details', 'notes']
+def save_consultancy(name, bank_details='', address='', notes=''):
+    fieldnames = ['consultancy_id', 'name', 'bank_details', 'address', 'notes']
     consultancies = load_consultancies()
     next_id = 1
     if consultancies:
@@ -196,7 +223,13 @@ def save_consultancy(name, bank_details='', notes=''):
             next_id = max([c.get('consultancy_id') or 0 for c in consultancies]) + 1
         except Exception:
             next_id = len(consultancies) + 1
-    row = {'consultancy_id': next_id, 'name': name, 'bank_details': _normalize_multiline(bank_details), 'notes': (notes or '').strip()}
+    row = {
+        'consultancy_id': next_id, 
+        'name': name,
+        'bank_details': _normalize_multiline(bank_details),
+        'address': _normalize_multiline(address),
+        'notes': (notes or '').strip()
+    }
     file_exists = os.path.exists(CONSULTANCIES_FILE)
     with open(CONSULTANCIES_FILE, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -204,10 +237,9 @@ def save_consultancy(name, bank_details='', notes=''):
             writer.writeheader()
         writer.writerow(row)
 
-
 def rewrite_consultancies(consultancies_list):
     """Overwrite consultancies CSV with provided list."""
-    fieldnames = ['consultancy_id', 'name', 'bank_details', 'notes']
+    fieldnames = ['consultancy_id', 'name', 'bank_details', 'address', 'notes']
     with open(CONSULTANCIES_FILE, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -216,6 +248,7 @@ def rewrite_consultancies(consultancies_list):
                 'consultancy_id': c.get('consultancy_id') or '',
                 'name': c.get('name',''),
                 'bank_details': c.get('bank_details',''),
+                'address': c.get('address',''),
                 'notes': c.get('notes','')
             })
 
@@ -232,33 +265,34 @@ def index():
 @app.route('/generate', methods=['POST'])
 def generate_bill():
     # Get form data
-    # Get both client and consultancy names
     client_name = request.form.get('client_name') or ''
-    # Resolve consultancy from select (consultancy_id) or fallback to text field
     consultancy_name = ''
     consultancy_id = request.form.get('consultancy_id') or ''
+    
+    # Get consultancy info for billing
+    selected_consultancy = None
     if consultancy_id and consultancy_id != 'custom':
-        # try to resolve consultancy name
-        try:
-            c_id = int(consultancy_id)
-        except Exception:
-            c_id = consultancy_id
         for c in load_consultancies():
-            # compare int or string
             try:
-                if int(c.get('consultancy_id')) == int(c_id):
+                if str(c.get('consultancy_id')) == str(consultancy_id):
                     consultancy_name = c.get('name') or ''
+                    selected_consultancy = c
                     break
             except Exception:
-                if str(c.get('consultancy_id')) == str(c_id):
-                    consultancy_name = c.get('name') or ''
-                    break
+                continue
+    
     if not consultancy_name:
         consultancy_name = request.form.get('consultancy_name') or request.form.get('client_name') or ''
-    bank_details = request.form.get('bank_details', '')
+        consultancy_id = 'custom'  # Use 'custom' for manually entered consultancies
+    
+    # Generate bill number using consultancy-specific counter
+    bill_number = get_next_bill_number(consultancy_id)
+    # Format bill number with consultancy prefix
+    formatted_bill_number = f"{consultancy_id}-{bill_number:04d}" if consultancy_id != 'custom' else str(bill_number)
+
+    # Get other form data
+    bank_details = _normalize_multiline(request.form.get('bank_details', ''))
     billed_for = request.form.get('billed_for', '')
-    # Normalize input bank details to remove extra blank lines/spaces
-    bank_details = _normalize_multiline(bank_details)
     
     # Process items
     items = []
@@ -276,44 +310,33 @@ def generate_bill():
             except ValueError:
                 continue
     
-    # Generate bill
-    bill_number = get_next_bill_number()
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
+    # Create bill data with formatted number and consultancy address if available
     bill_data = {
-        'bill_number': bill_number,
+        'bill_number': formatted_bill_number,
         'consultancy_name': consultancy_name,
         'client_name': client_name,
         'billed_for': billed_for,
-        'date': date,
+        'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'items': items,
         'total': total,
-        'bank_details': bank_details
+        'bank_details': bank_details,
+        'address': selected_consultancy.get('address', '') if selected_consultancy else ''
     }
     
-    # Save bill and update counter
     save_bill(bill_data)
-    save_bill_number(bill_number)
-    
     return render_template('bill_display.html', bill=bill_data)
 
 @app.route('/download_csv')
 def download_csv():
     return send_file(BILLS_FILE, as_attachment=True)
 
-@app.route('/bill/<int:bill_number>')
+@app.route('/bill/<bill_number>')  # Remove int: converter to accept any string
 def show_bill(bill_number):
     bills = load_bills()
     for b in bills:
-        # bill_number may be int or string in loaded rows; handle both
-        try:
-            if int(b.get('bill_number')) == int(bill_number):
-                return render_template('bill_display.html', bill=b)
-        except (ValueError, TypeError):
-            # fallback string comparison
-            if str(b.get('bill_number')) == str(bill_number):
-                return render_template('bill_display.html', bill=b)
+        # Direct string comparison for bill numbers
+        if str(b.get('bill_number')) == str(bill_number):
+            return render_template('bill_display.html', bill=b)
     # not found
     abort(404)
 
@@ -322,11 +345,20 @@ def show_bill(bill_number):
 def companies_view():
     if request.method == 'POST':
         name = request.form.get('name','').strip()
+        consultancy_id = request.form.get('consultancy_id')
         if name:
-            save_company(name)
+            save_company(name, consultancy_id)
         return redirect(url_for('index'))
     companies = load_companies()
-    return render_template('companies.html', companies=companies)
+    consultancies = load_consultancies()
+    return render_template('companies.html', companies=companies, consultancies=consultancies)
+
+@app.route('/api/companies/<consultancy_id>')
+def get_companies_for_consultancy(consultancy_id):
+    """API endpoint to get companies for a consultancy"""
+    companies = load_companies()
+    filtered = [c for c in companies if str(c.get('consultancy_id')) == str(consultancy_id)]
+    return {'companies': filtered}
 
 # Consultancies management
 @app.route('/consultancies', methods=['GET', 'POST'])
@@ -334,9 +366,10 @@ def consultancies_view():
     if request.method == 'POST':
         name = request.form.get('name','').strip()
         bank_details = request.form.get('bank_details','')
+        address = request.form.get('address','')
         notes = request.form.get('notes','')
         if name:
-            save_consultancy(name, bank_details)
+            save_consultancy(name, bank_details, address, notes)
         return redirect(url_for('index'))
     consultancies = load_consultancies()
     return render_template('consultancies.html', consultancies=consultancies)
@@ -366,25 +399,18 @@ def rewrite_bills(bills_list):
             })
 
 
-@app.route('/delete_bill/<int:bill_number>', methods=['POST'])
+@app.route('/delete_bill/<bill_number>', methods=['POST'])  # Remove int: converter here too
 def delete_bill(bill_number):
     bills = load_bills()
     remaining = []
     deleted = False
     for b in bills:
-        try:
-            if int(b.get('bill_number')) == int(bill_number):
-                deleted = True
-                continue
-        except Exception:
-            # fallback string comparison
-            if str(b.get('bill_number')) == str(bill_number):
-                deleted = True
-                continue
+        if str(b.get('bill_number')) == str(bill_number):
+            deleted = True
+            continue
         remaining.append(b)
     if not deleted:
         abort(404)
-    # rewrite CSV without the deleted bill
     rewrite_bills(remaining)
     return redirect(url_for('index'))
 
@@ -393,6 +419,7 @@ def edit_consultancy(consultancy_id):
     if request.method == 'POST':
         name = request.form.get('name','').strip()
         bank_details = request.form.get('bank_details','')
+        address = request.form.get('address','')
         notes = request.form.get('notes','')
         consultancies = load_consultancies()
         updated = False
@@ -404,6 +431,7 @@ def edit_consultancy(consultancy_id):
             if cid == consultancy_id:
                 c['name'] = name
                 c['bank_details'] = _normalize_multiline(bank_details)
+                c['address'] = _normalize_multiline(address)
                 c['notes'] = (notes or '').strip()
                 updated = True
                 break

@@ -175,7 +175,7 @@
               {{ (bill['consultancy_name'] or '')|upper }}
             </div>
             <div class="muted" style="margin-top: 6px; font-size: 14px">
-              15/15 Sahakar Nagar Wadala · Mumbai · 400031
+              {{ bill.get('address', '') }}
             </div>
           </div>
           <div class="bill-meta">

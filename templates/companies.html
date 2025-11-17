@@ -48,8 +48,16 @@
         <label>Name</label>
         <input type="text" name="name" required />
       </div>
-
-      <div style="margin-top: 12px">
+      <div style="margin-top: 8px">
+        <label>Consultancy</label>
+        <select name="consultancy_id" required>
+          <option value="">Select Consultancy</option>
+          {% for c in consultancies %}
+          <option value="{{ c.consultancy_id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="actions">
         <button type="submit" class="btn btn-primary">Add Company</button>
         <a
           href="/"
@@ -68,13 +76,21 @@
         <tr>
           <th>ID</th>
           <th>Name</th>
+          <th>Consultancy</th>
         </tr>
       </thead>
       <tbody>
-        {% for comp in companies %}
+        {% for company in companies %}
         <tr>
-          <td>{{ comp.company_id }}</td>
-          <td>{{ comp.name }}</td>
+          <td>{{ company.company_id }}</td>
+          <td>{{ company.name }}</td>
+          <td>
+            {% for c in consultancies %}
+            {% if c.consultancy_id == company.consultancy_id %}
+            {{ c.name }}
+            {% endif %}
+            {% endfor %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
