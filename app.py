@@ -451,5 +451,45 @@ def edit_consultancy(consultancy_id):
             return render_template('consultancies_edit.html', consultancy=c)
     abort(404)
 
+@app.route('/companies/edit/<int:company_id>', methods=['GET', 'POST'])
+def edit_company(company_id):
+    if request.method == 'POST':
+        name = request.form.get('name','').strip()
+        consultancy_id = request.form.get('consultancy_id')
+        companies = load_companies()
+        updated = False
+        for c in companies:
+            if c.get('company_id') == company_id:
+                c['name'] = name
+                c['consultancy_id'] = consultancy_id
+                updated = True
+                break
+        if not updated:
+            abort(404)
+        rewrite_companies(companies)
+        return redirect(url_for('companies_view'))
+
+    # GET: render edit form
+    companies = load_companies()
+    consultancies = load_consultancies()
+    for c in companies:
+        if c.get('company_id') == company_id:
+            return render_template('companies_edit.html', company=c, consultancies=consultancies)
+    abort(404)
+
+def rewrite_companies(companies_list):
+    """Overwrite companies CSV with provided list."""
+    fieldnames = ['company_id', 'name', 'consultancy_id']
+    with open(COMPANIES_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for c in companies_list:
+            writer.writerow({
+                'company_id': c.get('company_id') or '',
+                'name': c.get('name',''),
+                'consultancy_id': c.get('consultancy_id','')
+            })
+
+
 if __name__ == '__main__':
     app.run(debug=True)

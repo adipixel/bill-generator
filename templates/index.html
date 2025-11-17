@@ -185,25 +185,14 @@
 
         <div class="form-group">
           <label>Client / Company (Billed To):</label>
-          <select name="company_id" id="company-select" required>
-            <option value="">-- Select a company --</option>
-            {% for c in companies %}
-            <option
-              value="{{ c.company_id }}"
-              data-bank="{{ c.bank_details|replace('\n','\\n')|e }}"
-            >
-              {{ c.name }}
-            </option>
-            {% endfor %}
-            <option value="custom">Other (enter name)</option>
-          </select>
-          <input
-            type="text"
-            name="client_name"
-            id="client-name-input"
-            placeholder="Enter client name"
-            style="display: none; margin-top: 8px"
-          />
+          <div id="select_client_input">
+            <select name="client_name" id="client-select">
+              <option value="">-- Select a client --</option>
+            </select>
+          </div>
+          <div id="custom_client_input" style="display: none;">
+            <input type="text" name="client_name_custom" placeholder="Enter client name" />
+          </div>
         </div>
 
         <div class="form-group">
@@ -585,22 +574,37 @@
       }
     </script>
     <script>
+      // Remove or comment out existing consultancy change listener
       document.querySelector('select[name="consultancy_id"]').addEventListener('change', async function(e) {
-    const consultancyId = e.target.value;
-    const clientSelect = document.querySelector('select[name="client_name"]');
-    clientSelect.innerHTML = '<option value="">Select Client</option>';
-    
-    if (consultancyId && consultancyId !== 'custom') {
-        const response = await fetch(`/api/companies/${consultancyId}`);
-        const data = await response.json();
-        data.companies.forEach(company => {
-            const option = document.createElement('option');
-            option.value = company.name;
-            option.textContent = company.name;
-            clientSelect.appendChild(option);
-        });
-    }
-});
+          const consultancyId = e.target.value;
+          const clientSelect = document.getElementById('client-select');
+          const customClientDiv = document.getElementById('custom_client_input');
+          const selectClientDiv = document.getElementById('select_client_input');
+          
+          // Clear and hide both initially
+          clientSelect.innerHTML = '<option value="">-- Select a client --</option>';
+          customClientDiv.style.display = 'none';
+          selectClientDiv.style.display = 'none';
+          
+          if (consultancyId === 'custom') {
+              customClientDiv.style.display = 'block';
+          } else if (consultancyId) {
+              selectClientDiv.style.display = 'block';
+              try {
+                  const response = await fetch(`/api/companies/${consultancyId}`);
+                  const data = await response.json();
+                  
+                  data.companies.forEach(company => {
+                      const option = document.createElement('option');
+                      option.value = company.name;
+                      option.textContent = company.name;
+                      clientSelect.appendChild(option);
+                  });
+              } catch (error) {
+                  console.error('Error fetching companies:', error);
+              }
+          }
+      });
     </script>
   </body>
 </html>

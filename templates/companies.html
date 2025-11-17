@@ -20,6 +20,9 @@
       form {
         max-width: 800px;
       }
+      .actions {
+        margin-top: 12px;
+      }
       .btn {
         display: inline-block;
         padding: 8px 12px;
@@ -27,6 +30,7 @@
         border: none;
         cursor: pointer;
         font-weight: 600;
+        text-decoration: none;
       }
       .btn-primary {
         background: #0f62fe;
@@ -42,7 +46,6 @@
   </head>
   <body>
     <h1>Companies</h1>
-
     <form method="POST" action="/companies">
       <div>
         <label>Name</label>
@@ -59,17 +62,11 @@
       </div>
       <div class="actions">
         <button type="submit" class="btn btn-primary">Add Company</button>
-        <a
-          href="/"
-          class="btn btn-secondary"
-          style="text-decoration: none; margin-left: 8px; display: inline-block"
-          >Back</a
-        >
+        <a href="/" class="btn btn-secondary">Back</a>
       </div>
     </form>
 
     <hr />
-
     <h2>Existing Companies</h2>
     <table>
       <thead>
@@ -77,6 +74,7 @@
           <th>ID</th>
           <th>Name</th>
           <th>Consultancy</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -90,6 +88,14 @@
             {{ c.name }}
             {% endif %}
             {% endfor %}
+          </td>
+          <td>
+            <a
+              href="{{ url_for('edit_company', company_id=company.company_id) }}"
+              class="btn btn-secondary"
+            >
+              Edit
+            </a>
           </td>
         </tr>
         {% endfor %}
